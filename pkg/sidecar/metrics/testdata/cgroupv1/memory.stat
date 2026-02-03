@@ -1,0 +1,13 @@
+cache 31457280
+rss 52428800
+inactive_file 10485760
+active_file 20971520
+inactive_anon 0
+active_anon 52428800
+hierarchical_memory_limit 268435456
+total_cache 31457280
+total_rss 52428800
+total_inactive_file 10485760
+total_active_file 20971520
+total_inactive_anon 0
+total_active_anon 52428800
