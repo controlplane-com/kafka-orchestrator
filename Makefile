@@ -1,6 +1,6 @@
 REGISTRY   = ghcr.io
 COMPONENT  = kafka-orchestrator
-IMAGE      = controlplane-com/cpln-build/$(COMPONENT)
+IMAGE      = controlplane-com/$(COMPONENT)
 COMPONENT_IMAGE_NAME ?= $(shell echo "$(COMPONENT)" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_IMAGE
 TAG ?= latest
 
