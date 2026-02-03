@@ -1,6 +1,7 @@
 # Kafka Orchestrator
 
 A Kafka sidecar designed exclusively for [Control Plane](https://controlplane.com) stateful workloads. Provides health checks, Prometheus metrics, and automatic broker discovery using Control Plane's environment and replica-direct DNS.
+The sidecar runs alongside your Kafka container, monitoring broker health and exposing HTTP endpoints for health probes and Prometheus metrics.
 
 ## Features
 
@@ -9,27 +10,6 @@ A Kafka sidecar designed exclusively for [Control Plane](https://controlplane.co
 - **Prometheus Metrics** - Exposes cgroup memory metrics for OOM monitoring and capacity planning
 - **SASL Support** - PLAIN, SCRAM-SHA-256, and SCRAM-SHA-512 authentication
 - **Zero Config** - Works out of the box with sensible defaults from Control Plane environment
-
-## How It Works
-
-The sidecar runs alongside your Kafka container in a stateful workload. It:
-
-1. **Discovers** the broker ID from the pod hostname (e.g., `kafka-2` -> broker ID `2`)
-2. **Builds** bootstrap server addresses using Control Plane's replica-direct DNS
-3. **Monitors** broker health via cluster metadata and log directory status
-4. **Exposes** Prometheus metrics for memory pressure monitoring
-
-```
-┌─────────────────────────────────────────────────────┐
-│                 Stateful Workload                   │
-│  ┌─────────────┐    ┌───────────────────────────┐   │
-│  │    Kafka    │    │     Kafka Sidecar         │   │
-│  │   Broker    │◄───│  :8080/health/ready       │   │
-│  │    :9092    │    │  :8080/health/live        │   │
-│  │             │    │  :8080/metrics            │   │
-│  └─────────────┘    └───────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
-```
 
 ## Quick Start
 
@@ -129,16 +109,15 @@ replica-{i}.{workload}.{location}.{gvc}.cpln.local:{port}
 
 ### Health Check Details
 
-**Liveness (`/health/live`)**
-- Connects to Kafka cluster
-- Verifies this broker ID exists in cluster metadata
-- Fast check suitable for frequent polling
+**Liveness (`/health/live`)** - A broker is alive when:
+- It is reachable and responding to Kafka protocol requests
+- It appears in the cluster metadata (registered with the cluster)
 
-**Readiness (`/health/ready`)**
-- All liveness checks, plus:
-- Verifies a controller is elected
-- Checks for under-replicated partitions on this broker
-- Validates log directories have no future partitions
+**Readiness (`/health/ready`)** - A broker is ready to serve traffic when:
+- It is alive (passes liveness checks)
+- The cluster has an elected controller
+- All partitions on this broker are fully replicated (in-sync)
+- Log directories are healthy (no offline or future-dated partitions)
 
 ## Metrics
 
@@ -189,43 +168,6 @@ env:
     value: "admin"
   - name: SASL_PASSWORD
     value: "cpln://secret/kafka-secrets.admin-password"
-```
-
-## Development
-
-### Prerequisites
-
-- Go 1.25+
-- Docker (for testing)
-
-### Build
-
-```bash
-# Run tests
-make test
-
-# Build multi-arch images
-make push-image TAG=v1.0.0
-
-# Security scan
-make trivy-image TAG=v1.0.0
-```
-
-### Project Structure
-
-```
-kafka-orchestrator/
-├── cmd/
-│   └── sidecar/           # Main entrypoint and HTTP server
-├── pkg/
-│   ├── about/             # Version information
-│   └── sidecar/
-│       ├── types/         # Configuration schema
-│       ├── health/        # Kafka health checks (franz-go)
-│       ├── metrics/       # Cgroup memory metrics (Prometheus)
-│       └── discovery/     # Auto-discovery for broker ID and topology
-├── Dockerfile             # Multi-stage build (builder, tester, runner)
-└── Makefile               # Build and test targets
 ```
 
 ## License
