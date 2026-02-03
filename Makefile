@@ -53,7 +53,7 @@ push-image-amd64:
 		--push \
 		-f Dockerfile .
 
-push-image: push-image-arm64 push-image-amd64
+push-image:
 	docker buildx imagetools create \
 		--tag $(REGISTRY)/$(IMAGE):$(TAG) \
 		$(REGISTRY)/$(IMAGE):$(TAG)-amd64 \

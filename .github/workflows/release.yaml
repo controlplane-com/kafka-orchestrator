@@ -65,8 +65,4 @@ jobs:
         id: tag
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       - name: Create manifest
-        run: |
-          docker buildx imagetools create \
-            --tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.version }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.version }}-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.tag.outputs.version }}-arm64
+        run: make push-image
