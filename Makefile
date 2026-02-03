@@ -16,45 +16,42 @@ HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 
 test:
-	echo $(HOST_UID)
-	cd ../ && DOCKER_CONTENT_TRUST="" docker build --platform=linux/amd64 -t \
-    		$(REGISTRY)/$(IMAGE):tester \
-			--build-arg COMPONENT=$(COMPONENT) \
-    		--build-arg UID=$(HOST_UID) \
-    		--build-arg GID=$(HOST_GID) \
-    		--target tester \
-    		-f kafka-orchestrator/Dockerfile .
+	DOCKER_CONTENT_TRUST="" docker build --platform=linux/amd64 -t \
+		$(REGISTRY)/$(IMAGE):tester \
+		--build-arg COMPONENT=$(COMPONENT) \
+		--build-arg UID=$(HOST_UID) \
+		--build-arg GID=$(HOST_GID) \
+		--target tester \
+		-f Dockerfile .
 	docker run --dns 8.8.8.8 --dns 8.8.4.4 --entrypoint /bin/bash $(REGISTRY)/$(IMAGE):tester -c "cd /home/nonroot/service && go test -v -cover ./..."
 
 push-image-arm64:
-	cd ../ && DOCKER_CONTENT_TRUST="" docker buildx build -t \
+	DOCKER_CONTENT_TRUST="" docker buildx build -t \
 		$(REGISTRY)/$(IMAGE):$(TAG)-arm64 \
 		--platform linux/arm64 \
 		--build-arg COMPONENT=$(COMPONENT) \
 		--build-arg PROJECT_EPOCH=$(PROJECT_EPOCH) \
 		--build-arg PROJECT_VERSION=$(PROJECT_VERSION) \
 		--build-arg PROJECT_TIMESTAMP=$(PROJECT_TIMESTAMP) \
-		--build-arg PROJECT_BUILD=$${CI_PIPELINE_ID-0} \
+		--build-arg PROJECT_BUILD=$${CI_PIPELINE_ID:-$${GITHUB_RUN_ID:-0}} \
 		--build-arg VPREFIX=$(VPREFIX) \
-		--build-arg PROJECT_DIR=./kafka-orchestrator \
 		--target runner \
 		--push \
-		-f kafka-orchestrator/Dockerfile .
+		-f Dockerfile .
 
 push-image-amd64:
-	cd ../ && DOCKER_CONTENT_TRUST="" docker buildx build -t \
+	DOCKER_CONTENT_TRUST="" docker buildx build -t \
 		$(REGISTRY)/$(IMAGE):$(TAG)-amd64 \
 		--platform linux/amd64 \
 		--build-arg COMPONENT=$(COMPONENT) \
-		--build-arg PROJECT_DIR=./kafka-orchestrator \
 		--build-arg PROJECT_EPOCH=$(PROJECT_EPOCH) \
 		--build-arg PROJECT_VERSION=$(PROJECT_VERSION) \
 		--build-arg PROJECT_TIMESTAMP=$(PROJECT_TIMESTAMP) \
-		--build-arg PROJECT_BUILD=$${CI_PIPELINE_ID-0} \
+		--build-arg PROJECT_BUILD=$${CI_PIPELINE_ID:-$${GITHUB_RUN_ID:-0}} \
 		--build-arg VPREFIX=$(VPREFIX) \
 		--target runner \
 		--push \
-		-f kafka-orchestrator/Dockerfile .
+		-f Dockerfile .
 
 push-image: push-image-arm64 push-image-amd64
 	docker buildx imagetools create \

@@ -1,14 +1,13 @@
 FROM golang:1.25 AS builder
 
 ARG COMPONENT
-ARG PROJECT_DIR
 
-COPY ${PROJECT_DIR}/go.mod ${PROJECT_DIR}/go.sum /${COMPONENT}/
+COPY go.mod go.sum /${COMPONENT}/
 WORKDIR /${COMPONENT}
 RUN go mod download
 
-COPY ${PROJECT_DIR}/cmd /${COMPONENT}/cmd
-COPY ${PROJECT_DIR}/pkg /${COMPONENT}/pkg
+COPY cmd /${COMPONENT}/cmd
+COPY pkg /${COMPONENT}/pkg
 RUN go mod tidy
 WORKDIR /${COMPONENT}
 
@@ -29,11 +28,11 @@ RUN addgroup --gid $GID nonroot && adduser --uid $UID --gid $GID --disabled-pass
 USER nonroot
 WORKDIR /home/nonroot
 
-COPY --chown=nonroot:nonroot ./${COMPONENT}/go.mod ./${COMPONENT}/go.sum /home/nonroot/service/
+COPY --chown=nonroot:nonroot go.mod go.sum /home/nonroot/service/
 WORKDIR /home/nonroot/service
 RUN go mod download
-COPY --chown=nonroot:nonroot ./${COMPONENT}/pkg /home/nonroot/service/pkg
-COPY --chown=nonroot:nonroot ./${COMPONENT}/cmd /home/nonroot/service/cmd
+COPY --chown=nonroot:nonroot pkg /home/nonroot/service/pkg
+COPY --chown=nonroot:nonroot cmd /home/nonroot/service/cmd
 RUN go mod tidy
 
 RUN chmod -R 755 /home/nonroot/service/pkg
@@ -41,7 +40,6 @@ RUN chmod -R 755 /home/nonroot/service/pkg
 FROM alpine:3.20 as runner
 RUN apk --no-cache add ca-certificates
 
-ARG PROJECT_DIR
 ARG COMPONENT
 
 RUN mkdir /service
