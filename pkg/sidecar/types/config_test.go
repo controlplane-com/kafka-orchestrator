@@ -39,12 +39,12 @@ func unsetEnv(t *testing.T, key string) func() {
 }
 
 func TestConfigSchema_Defaults(t *testing.T) {
-	// Note: Config is already initialized by init()
-	// We can only test the current state
-
-	// Check that Config is not nil
-	if Config == nil {
-		t.Fatal("Config should not be nil after initialization")
+	// Config is nil until Initialize() is called explicitly
+	// This is intentional to avoid init() side effects that break tests in CI
+	if Config != nil {
+		// If a previous test initialized Config, that's fine
+		// Just verify it's a valid pointer
+		_ = Config.BrokerID
 	}
 }
 

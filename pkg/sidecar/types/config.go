@@ -65,19 +65,7 @@ type ConfigSchema struct {
 
 var Config *ConfigSchema
 
-func init() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-	if err := Initialize(logger); err != nil {
-		logger.Error("failed to initialize configuration", "error", err)
-		os.Exit(1)
-	}
-	logger.Info("configuration loaded",
-		"config", config.Summarize(Config))
-}
-
-// Initialize initializes the configuration. This is separated from init() for testability.
+// Initialize initializes the configuration. Must be called before using Config.
 func Initialize(logger *slog.Logger) error {
 	Config = &ConfigSchema{}
 

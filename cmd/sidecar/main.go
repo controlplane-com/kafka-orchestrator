@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/controlplane-com/libs-go/pkg/config"
 	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/about"
 	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/types"
 )
@@ -14,11 +15,23 @@ import (
 var logger *slog.Logger
 
 func main() {
-	// Initialize logger
+	// Initialize logger with default level for startup
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	// Initialize configuration
+	if err := types.Initialize(logger); err != nil {
+		logger.Error("failed to initialize configuration", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("configuration loaded", "config", config.Summarize(types.Config))
+
+	// Re-initialize logger with configured level
 	var level slog.Level
-	err := level.UnmarshalText([]byte(types.Config.LogLevel))
-	if err != nil {
-		panic(err)
+	if err := level.UnmarshalText([]byte(types.Config.LogLevel)); err != nil {
+		logger.Error("invalid log level", "error", err)
+		os.Exit(1)
 	}
 	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
