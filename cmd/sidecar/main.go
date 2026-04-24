@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/controlplane-com/kafka-orchestrator/pkg/about"
+	"github.com/controlplane-com/kafka-orchestrator/pkg/sidecar/types"
 	"github.com/controlplane-com/libs-go/pkg/config"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/about"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/types"
 )
 
 var logger *slog.Logger

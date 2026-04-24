@@ -127,6 +127,77 @@ func TestReadinessHandler(t *testing.T) {
 			expectedStatus: http.StatusServiceUnavailable,
 			expectHealthy:  false,
 		},
+		{
+			name:     "unhealthy - log dirs future partition",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						return kadm.Metadata{
+							Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+							Controller: 0,
+							Topics:     kadm.TopicDetails{},
+						}, nil
+					},
+					DescribeBrokerLogDirsFunc: func(ctx context.Context, broker int32, topics kadm.TopicsSet) (kadm.DescribedLogDirs, error) {
+						return kadm.DescribedLogDirs{
+							"/var/kafka-logs": kadm.DescribedLogDir{
+								Dir: "/var/kafka-logs",
+								Topics: kadm.DescribedLogDirTopics{
+									"test": {
+										0: {Topic: "test", Partition: 0, IsFuture: true},
+									},
+								},
+							},
+						}, nil
+					},
+				}, func() {}, nil
+			},
+			expectedStatus: http.StatusServiceUnavailable,
+			expectHealthy:  false,
+		},
+		{
+			name:     "unhealthy - controller check error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				calls := 0
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						calls++
+						if calls == 1 {
+							return kadm.Metadata{
+								Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+								Controller: 0,
+							}, nil
+						}
+						return kadm.Metadata{}, errors.New("controller fetch failed")
+					},
+				}, func() {}, nil
+			},
+			expectedStatus: http.StatusServiceUnavailable,
+			expectHealthy:  false,
+		},
+		{
+			name:     "unhealthy - under-replicated check error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				calls := 0
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						calls++
+						if calls <= 2 {
+							return kadm.Metadata{
+								Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+								Controller: 0,
+							}, nil
+						}
+						return kadm.Metadata{}, errors.New("partition fetch failed")
+					},
+				}, func() {}, nil
+			},
+			expectedStatus: http.StatusServiceUnavailable,
+			expectHealthy:  false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -317,6 +388,81 @@ func TestCheckReadiness(t *testing.T) {
 			},
 			expectHealthy: false,
 			expectMessage: "log directories unhealthy",
+		},
+		{
+			name:     "unhealthy - broker metadata error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						return kadm.Metadata{}, errors.New("connection refused")
+					},
+				}, func() {}, nil
+			},
+			expectHealthy: false,
+			expectMessage: "failed to fetch metadata: connection refused",
+		},
+		{
+			name:     "unhealthy - controller metadata error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				calls := 0
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						calls++
+						if calls == 1 {
+							return kadm.Metadata{
+								Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+								Controller: 0,
+							}, nil
+						}
+						return kadm.Metadata{}, errors.New("controller fetch failed")
+					},
+				}, func() {}, nil
+			},
+			expectHealthy: false,
+			expectMessage: "failed to fetch metadata: controller fetch failed",
+		},
+		{
+			name:     "unhealthy - under-replicated metadata error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				calls := 0
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						calls++
+						if calls <= 2 {
+							return kadm.Metadata{
+								Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+								Controller: 0,
+							}, nil
+						}
+						return kadm.Metadata{}, errors.New("partition fetch failed")
+					},
+				}, func() {}, nil
+			},
+			expectHealthy: false,
+			expectMessage: "failed to fetch metadata: partition fetch failed",
+		},
+		{
+			name:     "unhealthy - log dirs describe error",
+			brokerID: 0,
+			clientFactory: func() (KafkaAdminClient, func(), error) {
+				return &MockKafkaAdminClient{
+					MetadataFunc: func(ctx context.Context, topics ...string) (kadm.Metadata, error) {
+						return kadm.Metadata{
+							Brokers:    []kadm.BrokerDetail{{NodeID: 0}},
+							Controller: 0,
+							Topics:     kadm.TopicDetails{},
+						}, nil
+					},
+					DescribeBrokerLogDirsFunc: func(ctx context.Context, broker int32, topics kadm.TopicsSet) (kadm.DescribedLogDirs, error) {
+						return kadm.DescribedLogDirs{}, errors.New("log dir describe failed")
+					},
+				}, func() {}, nil
+			},
+			expectHealthy: false,
+			expectMessage: "failed to describe log dirs: log dir describe failed",
 		},
 	}
 

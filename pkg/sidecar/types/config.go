@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/controlplane-com/kafka-orchestrator/pkg/sidecar/discovery"
 	"github.com/controlplane-com/libs-go/pkg/config"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/discovery"
 )
 
 // Config holds the configuration for the Kafka sidecar

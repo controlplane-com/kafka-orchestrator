@@ -238,6 +238,12 @@ func TestParseWorkloadNameFromLink(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "trailing path segment after workload name",
+			link:        "/org/gitops/gvc/igor-kafka/workload/kafka-fix-cluster/extra",
+			expected:    "kafka-fix-cluster",
+			expectError: false,
+		},
+		{
 			name:        "missing /workload/ prefix",
 			link:        "/org/gitops/gvc/igor-kafka/kafka-fix-cluster",
 			expected:    "",

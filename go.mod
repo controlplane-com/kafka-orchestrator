@@ -1,4 +1,4 @@
-module gitlab.com/controlplane/controlplane/kafka-orchestrator
+module github.com/controlplane-com/kafka-orchestrator
 
 go 1.25.0
 

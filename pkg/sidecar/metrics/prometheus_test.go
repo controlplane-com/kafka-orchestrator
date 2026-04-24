@@ -206,3 +206,17 @@ func TestCollectorRegister(t *testing.T) {
 		t.Error("expected error when registering collector twice")
 	}
 }
+
+func TestCollectorRegisterMethod(t *testing.T) {
+	logger := testLogger()
+	collector := NewCollectorWithReader(logger, &MockCgroupReader{})
+
+	if err := collector.Register(); err != nil {
+		t.Fatalf("expected Register to succeed, got %v", err)
+	}
+	t.Cleanup(func() { prometheus.Unregister(collector) })
+
+	if err := collector.Register(); err == nil {
+		t.Error("expected Register to fail on second call for the same default registry")
+	}
+}

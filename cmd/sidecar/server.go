@@ -13,10 +13,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/about"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/health"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/metrics"
-	"gitlab.com/controlplane/controlplane/kafka-orchestrator/pkg/sidecar/types"
+	"github.com/controlplane-com/kafka-orchestrator/pkg/about"
+	"github.com/controlplane-com/kafka-orchestrator/pkg/sidecar/health"
+	"github.com/controlplane-com/kafka-orchestrator/pkg/sidecar/metrics"
+	"github.com/controlplane-com/kafka-orchestrator/pkg/sidecar/types"
 )
 
 // Server represents the HTTP server for the sidecar
