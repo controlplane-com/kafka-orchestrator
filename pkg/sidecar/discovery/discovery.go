@@ -41,17 +41,29 @@ func ParseBrokerIDFromHostname(hostname string) (int32, error) {
 	return int32(index), nil
 }
 
-// BuildBootstrapServers creates replica-direct hostnames for Kafka brokers.
-// Format: replica-${replicaIndex}.${workloadName}.${location}.${gvcName}.cpln.local:${port}
-func BuildBootstrapServers(workloadName, location, gvcName string, replicaCount int, port int) string {
+// BuildBootstrapServers creates per-pod hostnames using the Kubernetes headless
+// Service that backs the StatefulSet. The orchestrator only ever talks to the
+// brokers it lives next to (same cluster, same GVC), so we always use the
+// in-cluster headless DNS path — never the cpln.local mesh path. The headless
+// Service is published with publishNotReadyAddresses=true (required for KRaft
+// peer discovery on cold start), which means DNS resolves the pod IPs even
+// before any replica is Ready and the orchestrator can break the readiness
+// chicken-and-egg.
+//
+// Format: ${workloadName}-${i}.${workloadName}.${gvcAlias}.svc.cluster.local:${port}
+//
+// gvcAlias here is the Control Plane GVC's parent identifier (the value
+// injected as $CPLN_GVC_ALIAS, which is the Kubernetes namespace), not the GVC
+// name.
+func BuildBootstrapServers(workloadName, gvcAlias string, replicaCount int, port int) string {
 	if replicaCount <= 0 {
 		replicaCount = 1
 	}
 
 	servers := make([]string, replicaCount)
 	for i := 0; i < replicaCount; i++ {
-		servers[i] = fmt.Sprintf("replica-%d.%s.%s.%s.cpln.local:%d",
-			i, workloadName, location, gvcName, port)
+		servers[i] = fmt.Sprintf("%s-%d.%s.%s.svc.cluster.local:%d",
+			workloadName, i, workloadName, gvcAlias, port)
 	}
 
 	return strings.Join(servers, ",")
@@ -94,28 +106,12 @@ func ParseWorkloadNameFromLink(link string) (string, error) {
 }
 
 // DiscoverGvcAlias returns the GVC alias from CPLN_GVC_ALIAS env var.
+// This is the Kubernetes namespace name (Control Plane's GVC parent identifier),
+// used as the in-cluster DNS namespace for headless Service per-pod records.
 func DiscoverGvcAlias() (string, error) {
 	gvcAlias := os.Getenv("CPLN_GVC_ALIAS")
 	if gvcAlias == "" {
 		return "", errors.New("CPLN_GVC_ALIAS environment variable not set")
 	}
 	return gvcAlias, nil
-}
-
-// DiscoverGvcName returns the GVC name from CPLN_GVC env var.
-func DiscoverGvcName() (string, error) {
-	gvcName := os.Getenv("CPLN_GVC")
-	if gvcName == "" {
-		return "", errors.New("CPLN_GVC environment variable not set")
-	}
-	return gvcName, nil
-}
-
-// DiscoverLocation returns the location from CPLN_LOCATION env var.
-func DiscoverLocation() (string, error) {
-	location := os.Getenv("CPLN_LOCATION")
-	if location == "" {
-		return "", errors.New("CPLN_LOCATION environment variable not set")
-	}
-	return location[strings.LastIndex(location, "/")+1:], nil
 }

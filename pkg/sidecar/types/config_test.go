@@ -106,8 +106,7 @@ func TestInitialize_WithAllEnvVars(t *testing.T) {
 	cleanups := []func(){
 		setEnv(t, "HOSTNAME", "kafka-5"),
 		setEnv(t, "CPLN_WORKLOAD", "/org/test/gvc/test/workload/kafka"),
-		setEnv(t, "CPLN_LOCATION", "aws-us-west-2"),
-		setEnv(t, "CPLN_GVC", "test-gvc"),
+		setEnv(t, "CPLN_GVC_ALIAS", "abc123xyz"),
 		setEnv(t, "REPLICA_COUNT", "3"),
 		setEnv(t, "KAFKA_PORT", "9092"),
 	}
@@ -143,8 +142,7 @@ func TestInitialize_WithExplicitBrokerID(t *testing.T) {
 		setEnv(t, "BROKER_ID", "10"),
 		setEnv(t, "HOSTNAME", "kafka-5"), // Should be ignored
 		setEnv(t, "CPLN_WORKLOAD", "/org/test/gvc/test/workload/kafka"),
-		setEnv(t, "CPLN_LOCATION", "aws-us-west-2"),
-		setEnv(t, "CPLN_GVC", "test-gvc"),
+		setEnv(t, "CPLN_GVC_ALIAS", "abc123xyz"),
 	}
 	defer func() {
 		for _, cleanup := range cleanups {
@@ -229,15 +227,15 @@ func TestInitialize_MissingWorkloadName(t *testing.T) {
 	}
 }
 
-func TestInitialize_MissingLocation(t *testing.T) {
+func TestInitialize_MissingGvcAlias(t *testing.T) {
 	logger := testLogger()
 
 	cleanups := []func(){
 		setEnv(t, "HOSTNAME", "kafka-0"),
 		setEnv(t, "CPLN_WORKLOAD", "/org/test/gvc/test/workload/kafka"),
 		unsetEnv(t, "BOOTSTRAP_SERVERS"),
-		unsetEnv(t, "LOCATION"),
-		unsetEnv(t, "CPLN_LOCATION"),
+		unsetEnv(t, "GVC_ALIAS"),
+		unsetEnv(t, "CPLN_GVC_ALIAS"),
 	}
 	defer func() {
 		for _, cleanup := range cleanups {
@@ -247,30 +245,7 @@ func TestInitialize_MissingLocation(t *testing.T) {
 
 	err := Initialize(logger)
 	if err == nil {
-		t.Error("expected error when location cannot be discovered")
-	}
-}
-
-func TestInitialize_MissingGvcName(t *testing.T) {
-	logger := testLogger()
-
-	cleanups := []func(){
-		setEnv(t, "HOSTNAME", "kafka-0"),
-		setEnv(t, "CPLN_WORKLOAD", "/org/test/gvc/test/workload/kafka"),
-		setEnv(t, "CPLN_LOCATION", "aws-us-west-2"),
-		unsetEnv(t, "BOOTSTRAP_SERVERS"),
-		unsetEnv(t, "GVC_NAME"),
-		unsetEnv(t, "CPLN_GVC"),
-	}
-	defer func() {
-		for _, cleanup := range cleanups {
-			cleanup()
-		}
-	}()
-
-	err := Initialize(logger)
-	if err == nil {
-		t.Error("expected error when GVC name cannot be discovered")
+		t.Error("expected error when GVC alias cannot be discovered")
 	}
 }
 
@@ -284,8 +259,6 @@ func TestConfigSchema_Tags(t *testing.T) {
 	_ = cfg.BrokerID
 	_ = cfg.WorkloadName
 	_ = cfg.GvcAlias
-	_ = cfg.GvcName
-	_ = cfg.Location
 	_ = cfg.ReplicaCount
 	_ = cfg.KafkaPort
 	_ = cfg.BootstrapServers

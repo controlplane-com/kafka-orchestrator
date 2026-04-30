@@ -35,8 +35,7 @@ The sidecar auto-discovers most configuration from Control Plane environment var
 |----------|----------|---------|-------------|
 | BROKER_ID | No | auto from $HOSTNAME | Kafka broker ID (format: workload-N -> N) |
 | WORKLOAD_NAME | No | auto from CPLN_WORKLOAD | Override workload name for bootstrap servers |
-| LOCATION | No | auto from CPLN_LOCATION | Override location for bootstrap servers |
-| GVC_NAME | No | auto from CPLN_GVC | Override GVC name for bootstrap servers |
+| GVC_ALIAS | No | auto from CPLN_GVC_ALIAS | Override GVC alias (Kubernetes namespace) for bootstrap servers |
 | REPLICA_COUNT | No | 1 | Number of Kafka replicas for bootstrap server list |
 | KAFKA_PORT | No | 9092 | Kafka broker port |
 | BOOTSTRAP_SERVERS | No | auto-built | Explicit bootstrap servers (disables auto-build) |
@@ -55,8 +54,8 @@ When running on Control Plane, the sidecar automatically discovers:
 - **BROKER_ID**: Parsed from `$HOSTNAME` (e.g., `kafka-2` -> broker ID 2)
 - **Workload name**: Parsed from `CPLN_WORKLOAD` (e.g., `/org/.../workload/kafka` -> `kafka`)
 - **Location**: Read from `CPLN_LOCATION` (e.g., `aws-us-west-2`)
-- **GVC name**: Read from `CPLN_GVC` (e.g., `my-gvc`)
-- **Bootstrap servers**: Built as `replica-{i}.{workload}.{location}.{gvcName}.cpln.local:{port}`
+- **GVC alias**: Read from `CPLN_GVC_ALIAS` (e.g., `023d8h0rn0sag` — the Kubernetes namespace)
+- **Bootstrap servers**: Built as `{workload}-{i}.{workload}.{gvcAlias}.svc.cluster.local:{port}` (the StatefulSet's headless Service per-pod DNS)
 
 ## Endpoints
 

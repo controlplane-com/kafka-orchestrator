@@ -78,8 +78,7 @@ All configuration is via environment variables. Values are auto-discovered from 
 |----------|---------|-------------|
 | `BROKER_ID` | *from `$HOSTNAME`* | Override discovered broker ID |
 | `WORKLOAD_NAME` | *from `CPLN_WORKLOAD`* | Override discovered workload name |
-| `LOCATION` | *from `CPLN_LOCATION`* | Override discovered location |
-| `GVC_NAME` | *from `CPLN_GVC`* | Override discovered GVC name |
+| `GVC_ALIAS` | *from `CPLN_GVC_ALIAS`* | Override discovered GVC alias (the Kubernetes namespace) |
 | `BOOTSTRAP_SERVERS` | *auto-built* | Override auto-built bootstrap server list |
 
 ### Auto-Discovery
@@ -90,13 +89,14 @@ The sidecar automatically discovers configuration from Control Plane's environme
 |-------|--------|---------|
 | Broker ID | `$HOSTNAME` | `kafka-2` -> `2` |
 | Workload name | `$CPLN_WORKLOAD` | `/org/.../workload/kafka` -> `kafka` |
-| Location | `$CPLN_LOCATION` | `aws-us-west-2` |
-| GVC name | `$CPLN_GVC` | `my-gvc` |
+| GVC alias | `$CPLN_GVC_ALIAS` | `023d8h0rn0sag` (the Kubernetes namespace) |
 
-Bootstrap servers are built as:
+Bootstrap servers are built using the StatefulSet's headless Service per-pod DNS:
 ```
-replica-{i}.{workload}.{location}.{gvc}.cpln.local:{port}
+{workload}-{i}.{workload}.{gvcAlias}.svc.cluster.local:{port}
 ```
+
+We use the in-cluster headless path rather than `replica-{i}.<workload>.<location>.<gvc>.cpln.local` because the orchestrator only ever talks to brokers it's co-located with — there's no cross-cluster or cross-location use case — and the cpln.local path's `-ext` Service readiness gating creates a chicken-and-egg deadlock during cold start. The headless Service, with `publishNotReadyAddresses: true`, resolves peer pods regardless of readiness so KRaft quorum can form.
 
 ## API Endpoints
 

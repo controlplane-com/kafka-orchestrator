@@ -15,21 +15,13 @@ type ConfigSchema struct {
 	// Auto-discovered from $HOSTNAME if not set (format: workload-N -> N)
 	BrokerID int32 `cpln:"default:0;env:BROKER_ID"`
 
-	// WorkloadName is the name of the workload for building replica-direct hostnames
-	// Auto-discovered from CPLN_WORKLOAD if not set
+	// WorkloadName is the name of the workload for building per-pod hostnames.
+	// Auto-discovered from CPLN_WORKLOAD if not set.
 	WorkloadName string `cpln:"env:WORKLOAD_NAME"`
 
-	// GvcAlias is the GVC alias for building replica-direct hostnames (legacy)
-	// Auto-discovered from CPLN_GVC_ALIAS if not set
+	// GvcAlias is the GVC alias (Kubernetes namespace) for building per-pod hostnames.
+	// Auto-discovered from CPLN_GVC_ALIAS if not set.
 	GvcAlias string `cpln:"env:GVC_ALIAS"`
-
-	// GvcName is the GVC name for building replica-direct hostnames
-	// Auto-discovered from CPLN_GVC if not set
-	GvcName string `cpln:"env:GVC_NAME"`
-
-	// Location is the location for building replica-direct hostnames
-	// Auto-discovered from CPLN_LOCATION if not set
-	Location string `cpln:"env:LOCATION"`
 
 	// ReplicaCount is the number of Kafka replicas for building bootstrap server list
 	ReplicaCount int `cpln:"default:1;env:REPLICA_COUNT"`
@@ -37,8 +29,13 @@ type ConfigSchema struct {
 	// KafkaPort is the Kafka broker port
 	KafkaPort int `cpln:"default:9092;env:KAFKA_PORT"`
 
-	// BootstrapServers is the Kafka bootstrap servers
-	// Auto-built from WorkloadName/GvcAlias/ReplicaCount if not set
+	// BootstrapServers is the Kafka bootstrap servers list. Auto-built from
+	// WorkloadName/GvcAlias/ReplicaCount via the StatefulSet's headless Service per-pod
+	// DNS if not set explicitly. We always use the in-cluster headless path because
+	// the orchestrator only ever talks to brokers it's co-located with — there's no
+	// cross-cluster or cross-location use case that would justify the cpln.local mesh
+	// path, and that path's `-ext` Service readiness gating creates a chicken-and-egg
+	// deadlock during cold start.
 	BootstrapServers string `cpln:"env:BOOTSTRAP_SERVERS"`
 
 	// SASL authentication configuration
@@ -99,34 +96,20 @@ func Initialize(logger *slog.Logger) error {
 				"workloadName", workloadName)
 		}
 
-		// Try to get location from config, or discover from CPLN_LOCATION
-		location := Config.Location
-		if location == "" {
-			discovered, err := discovery.DiscoverLocation()
+		gvcAlias := Config.GvcAlias
+		if gvcAlias == "" {
+			discovered, err := discovery.DiscoverGvcAlias()
 			if err != nil {
 				return err
 			}
-			location = discovered
-			logger.Info("discovered location from CPLN_LOCATION",
-				"location", location)
-		}
-
-		// Try to get GVC name from config, or discover from CPLN_GVC
-		gvcName := Config.GvcName
-		if gvcName == "" {
-			discovered, err := discovery.DiscoverGvcName()
-			if err != nil {
-				return err
-			}
-			gvcName = discovered
-			logger.Info("discovered GVC name from CPLN_GVC",
-				"gvcName", gvcName)
+			gvcAlias = discovered
+			logger.Info("discovered GVC alias from CPLN_GVC_ALIAS",
+				"gvcAlias", gvcAlias)
 		}
 
 		Config.BootstrapServers = discovery.BuildBootstrapServers(
 			workloadName,
-			location,
-			gvcName,
+			gvcAlias,
 			Config.ReplicaCount,
 			Config.KafkaPort,
 		)

@@ -149,62 +149,56 @@ func TestBuildBootstrapServers(t *testing.T) {
 	tests := []struct {
 		name         string
 		workloadName string
-		location     string
-		gvcName      string
+		gvcAlias     string
 		replicaCount int
 		port         int
 		expected     string
 	}{
 		{
 			name:         "single replica",
-			workloadName: "kafka",
-			location:     "aws-us-west-2",
-			gvcName:      "test-gvc",
+			workloadName: "etl-cluster",
+			gvcAlias:     "023d8h0rn0sag",
 			replicaCount: 1,
 			port:         9092,
-			expected:     "replica-0.kafka.aws-us-west-2.test-gvc.cpln.local:9092",
+			expected:     "etl-cluster-0.etl-cluster.023d8h0rn0sag.svc.cluster.local:9092",
 		},
 		{
 			name:         "three replicas",
-			workloadName: "kafka",
-			location:     "gcp-us-east1",
-			gvcName:      "prod-gvc",
+			workloadName: "etl-cluster",
+			gvcAlias:     "023d8h0rn0sag",
 			replicaCount: 3,
 			port:         9092,
-			expected:     "replica-0.kafka.gcp-us-east1.prod-gvc.cpln.local:9092,replica-1.kafka.gcp-us-east1.prod-gvc.cpln.local:9092,replica-2.kafka.gcp-us-east1.prod-gvc.cpln.local:9092",
+			expected:     "etl-cluster-0.etl-cluster.023d8h0rn0sag.svc.cluster.local:9092,etl-cluster-1.etl-cluster.023d8h0rn0sag.svc.cluster.local:9092,etl-cluster-2.etl-cluster.023d8h0rn0sag.svc.cluster.local:9092",
 		},
 		{
 			name:         "custom port",
 			workloadName: "kafka",
-			location:     "aws-eu-west-1",
-			gvcName:      "test-gvc",
+			gvcAlias:     "abc123",
 			replicaCount: 2,
 			port:         9094,
-			expected:     "replica-0.kafka.aws-eu-west-1.test-gvc.cpln.local:9094,replica-1.kafka.aws-eu-west-1.test-gvc.cpln.local:9094",
+			expected:     "kafka-0.kafka.abc123.svc.cluster.local:9094,kafka-1.kafka.abc123.svc.cluster.local:9094",
 		},
 		{
 			name:         "zero replica count defaults to 1",
 			workloadName: "kafka",
-			location:     "aws-us-west-2",
-			gvcName:      "test-gvc",
+			gvcAlias:     "abc123",
 			replicaCount: 0,
 			port:         9092,
-			expected:     "replica-0.kafka.aws-us-west-2.test-gvc.cpln.local:9092",
+			expected:     "kafka-0.kafka.abc123.svc.cluster.local:9092",
 		},
 		{
 			name:         "negative replica count defaults to 1",
 			workloadName: "kafka",
-			location:     "aws-us-west-2",
-			gvcName:      "test-gvc",
+			gvcAlias:     "abc123",
 			replicaCount: -1,
 			port:         9092,
-			expected:     "replica-0.kafka.aws-us-west-2.test-gvc.cpln.local:9092",
+			expected:     "kafka-0.kafka.abc123.svc.cluster.local:9092",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildBootstrapServers(tt.workloadName, tt.location, tt.gvcName, tt.replicaCount, tt.port)
+			result := BuildBootstrapServers(tt.workloadName, tt.gvcAlias, tt.replicaCount, tt.port)
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -378,102 +372,6 @@ func TestDiscoverGvcAlias(t *testing.T) {
 		}
 		if result != "abc123xyz" {
 			t.Errorf("expected 'abc123xyz', got %q", result)
-		}
-	})
-}
-
-func TestDiscoverGvcName(t *testing.T) {
-	t.Run("CPLN_GVC not set", func(t *testing.T) {
-		original := os.Getenv("CPLN_GVC")
-		if err := os.Unsetenv("CPLN_GVC"); err != nil {
-			t.Fatalf("failed to unset CPLN_GVC: %v", err)
-		}
-		defer func() {
-			if original != "" {
-				if err := os.Setenv("CPLN_GVC", original); err != nil {
-					t.Errorf("failed to restore CPLN_GVC: %v", err)
-				}
-			}
-		}()
-
-		_, err := DiscoverGvcName()
-		if err == nil {
-			t.Errorf("expected error when CPLN_GVC is not set")
-		}
-	})
-
-	t.Run("valid CPLN_GVC", func(t *testing.T) {
-		original := os.Getenv("CPLN_GVC")
-		if err := os.Setenv("CPLN_GVC", "my-gvc-name"); err != nil {
-			t.Fatalf("failed to set CPLN_GVC: %v", err)
-		}
-		defer func() {
-			if original != "" {
-				if err := os.Setenv("CPLN_GVC", original); err != nil {
-					t.Errorf("failed to restore CPLN_GVC: %v", err)
-				}
-			} else {
-				if err := os.Unsetenv("CPLN_GVC"); err != nil {
-					t.Errorf("failed to unset CPLN_GVC: %v", err)
-				}
-			}
-		}()
-
-		result, err := DiscoverGvcName()
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-			return
-		}
-		if result != "my-gvc-name" {
-			t.Errorf("expected 'my-gvc-name', got %q", result)
-		}
-	})
-}
-
-func TestDiscoverLocation(t *testing.T) {
-	t.Run("CPLN_LOCATION not set", func(t *testing.T) {
-		original := os.Getenv("CPLN_LOCATION")
-		if err := os.Unsetenv("CPLN_LOCATION"); err != nil {
-			t.Fatalf("failed to unset CPLN_LOCATION: %v", err)
-		}
-		defer func() {
-			if original != "" {
-				if err := os.Setenv("CPLN_LOCATION", original); err != nil {
-					t.Errorf("failed to restore CPLN_LOCATION: %v", err)
-				}
-			}
-		}()
-
-		_, err := DiscoverLocation()
-		if err == nil {
-			t.Errorf("expected error when CPLN_LOCATION is not set")
-		}
-	})
-
-	t.Run("valid CPLN_LOCATION", func(t *testing.T) {
-		original := os.Getenv("CPLN_LOCATION")
-		if err := os.Setenv("CPLN_LOCATION", "aws-us-west-2"); err != nil {
-			t.Fatalf("failed to set CPLN_LOCATION: %v", err)
-		}
-		defer func() {
-			if original != "" {
-				if err := os.Setenv("CPLN_LOCATION", original); err != nil {
-					t.Errorf("failed to restore CPLN_LOCATION: %v", err)
-				}
-			} else {
-				if err := os.Unsetenv("CPLN_LOCATION"); err != nil {
-					t.Errorf("failed to unset CPLN_LOCATION: %v", err)
-				}
-			}
-		}()
-
-		result, err := DiscoverLocation()
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-			return
-		}
-		if result != "aws-us-west-2" {
-			t.Errorf("expected 'aws-us-west-2', got %q", result)
 		}
 	})
 }
